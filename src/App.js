@@ -1,51 +1,109 @@
-import { useState } from 'react';
+import { useEffect,  useState } from 'react';
 import './App.css'
 import { BsThreeDots} from 'react-icons/bs'
+import { CiCirclePlus} from 'react-icons/ci'
 import { RxDotFilled} from 'react-icons/rx'
 import { IoSendSharp} from 'react-icons/io5'
+import { apiConnector } from './apiconnector.js';
+
 
 function App() {
 
   const [openChat,setOpenChat]=useState(false)
+  const [userInput,setUserInput]=useState("")
+  const [aiResponse,setAiResponse]=useState(null)
+  const [previousChats,setPreviousChats]=useState([])
+  const [currentTitle,setCurrentTitle]=useState(null)
+
+
+  useEffect(()=>{
+    if(!currentTitle&&userInput&&aiResponse){
+      setCurrentTitle(userInput)
+    }
+    if(currentTitle&&userInput&&aiResponse){
+      setPreviousChats(previousChats=>(
+        [...previousChats,
+          {
+            title:currentTitle,
+            role:"user",
+            content:userInput
+          },
+          {
+            title:currentTitle,
+            role:aiResponse.role,
+            content:aiResponse.content
+          },
+        ]
+      ))
+    }
+
+  },[aiResponse,currentTitle])
+  
+  const clearQuery=()=>{
+    setUserInput("")
+    setCurrentTitle(null)
+    setAiResponse(null)
+  }  
+
+
+  
+  const getUserPrompt=async(userPrompt)=>{
+   const res= await apiConnector("POST","http://localhost:4000/getResponse",{userPrompt})
+  //  console.log(res.data.data)
+   setAiResponse(res.data.data)
+  } 
+
+ 
+
+  // Previous chat will contans all the chat this get reset only after  page refresh 
+  const currentChat=previousChats.filter((previousChat)=>previousChat.title===currentTitle) //filter out current chat
+  
+  const uniqueTitles=Array.from(new Set(previousChats.map((previousChat)=>previousChat.title))) //returns a array of with titles
+  // console.log("uniqueTitles",uniqueTitles)
+  
+
+
 
   return (
-  <div className='w-11/12 mx-auto bg-gray-500 h-screen '>
+  <div className='w-11/12 mx-auto bg-[rgb(0,8,20)] h-screen '>
   <div className="relative">
     {/* chat input interfacae */}
-  <div className={`${openChat?"block":"hidden" }  bg-[#343541] text-white  fixed w-[200px] h-[300px]  bottom-20  right-10 rounded-md transition-all duration-200 scroll-smooth py-1 `}>
+  <div className={`${openChat?"block":"hidden" }  bg-[rgb(22,29,41)] text-[rgb(241,242,255)]  fixed w-[350px] h-[350px]  bottom-20  right-10 rounded-md transition-all duration-200 scroll-smooth py-1 `}>
 
     <div className='flex relative flex-col h-full w-full'>
 
       {/* display a output */}
-        <div className='h-[85%]  flex flex-col gap-4'>
-          {/* user */}
-          <div className="flex gap-4 p-2">
-          {/* avatar */}
-            <div className="rounded-full w-6 bg-black"></div>
-            {/* message */}
-            <div className="text-sm break-all w-[90%]">
-              Hello World
-            </div>
-          </div>
-
-          {/* AI  */}
-          <div className="flex gap-4 bg-[#444654] h-fit w-full p-2">
-          {/* avatar */}
-            <div className="rounded-full w-6 h-6 bg-green-700"></div>
-            {/* message */}
-            <div className="text-sm  break-all w-[90%]">
-              hello AI
-            </div>
-          </div>
-
+        <div className='h-[85%]  flex flex-col gap-4  overflow-y-scroll chat-display'>
+          {!aiResponse && <div className='flex justify-center items-center h-full'>Welcome to AI Assistant Bot</div>}
+          
+          <ul>
+            {
+              currentChat?.map((chat,index)=>(
+                <li key={index} className={`${chat.role==="assistant"?"bg-gray-300 bg-opacity-20":"bg-transparent"} flex gap-6 items-center text-white text-xs p-2`}>
+                  <p className='max-w-[10%]'>{chat.role}</p>
+                  <p className='max-w-[90%]'>{chat.content}</p>
+                </li>
+              ))
+            }
+          </ul>
         </div>
       
       {/* user Input */}
-      <div className='w-full h-[15%]  bottom-0 flex items-center relative px-2'>
-        <textarea rows={1} placeholder='You can type here' className='outline-none resize-none py-1 bg-transparent rounded-md border border-gray-600 text-xs w-full px-1' />
-        <button className='absolute right-3 text-sm'>
-          <IoSendSharp/>
+      <div className='w-full h-[20%]  bottom-0 flex items-center relative  px-2 text-white'>
+        <input value={userInput} onChange={(e)=>setUserInput(e.target.value)} rows={1} placeholder='You can type here' className='outline-none resize-none py-2 bg-transparent rounded-md border border-gray-600 text-xs w-full px-1' />
+        <div  className='absolute right-3 text-sm flex gap-2'>
+        <button className='group' type='submit' onClick={()=>getUserPrompt(userInput)}>
+          <IoSendSharp size={20}/>
+        <div className='bg-white hidden group-hover:inline absolute left-0  bottom-10 rounded-md w-14 py-2 px-2 text-center text-[rgb(22,29,41)] text-xs transition-all duration-200 '>Search</div>
+
         </button>
+          
+        <button  className='group' type='reset' onClick={()=>clearQuery()}>
+          <CiCirclePlus size={20}/>
+        <div className='bg-white hidden group-hover:inline absolute left-0  bottom-10 rounded-md w-14 py-2 px-2 text-center text-[rgb(22,29,41)] text-xs transition-all duration-200 '>New chat</div>
+        </button>
+        </div>
+
 
       </div>
     </div>
@@ -83,10 +141,20 @@ function App() {
       </div>
   </div>
   </div>
+
   );
 }
 
 export default App;
+
+
+// {/* user */}
+// {/* <div className="flex gap-4 p-2">
+//   <div className="rounded-full w-6 bg-black"></div>
+//   <div className="text-sm break-all w-[90%]">
+//     Hello World
+//   </div>
+// </div> */}
 
 
 
